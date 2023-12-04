@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Weather Component</title>
+    <style>
+        #weather-widget img,
+        #weather-widget p {
+            display: inline-block;
+            vertical-align: middle;
+            margin: 0.1rem;
+        }
+
+        #weather-widget {
+            background-color: lightblue;
+            margin: 1rem;
+            padding: 1rem;
+            border-radius: 1rem;
+            max-width: 80%;
+        }
+
+        body {
+            padding: 1rem;
+            font: 1rem/1.5 Arial, sans-serif;
+        }
+
+        #main-weather-icon {
+            width: 3rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Current Weather Widget</h1>
+    <h2>UCSD La Jolla, CA</h2>
+    <div id="weather-widget">
+        <noscript>Current Weather Conditions Unavailable</noscript>
+    </div>
+    <script>
+        fetch('https://api.weather.gov/points/32.87968,-117.23631')
+            .then(response => response.json())
+            .then(data => {
+                // Extract the forecast URLs
+                const forecastUrl = data.properties.forecast;
+                const forecastHourlyUrl = data.properties.forecastHourly;
+                const forecastGridDataUrl = data.properties.forecastGridData;
+
+                // Fetch the forecast data
+                return Promise.all([
+                    fetch(forecastUrl).then(response => response.json()),
+                    fetch(forecastHourlyUrl).then(response => response.json()),
+                    fetch(forecastGridDataUrl).then(response => response.json())
+                ]);
+            })
+            .then(([forecastData, forecastHourlyData, forecastGridData]) => {
+                // Extract the necessary information from the forecast data
+                const weather = forecastData.properties.periods[0];
+                let icon = 'sunny.svg';
+                if (weather.isDaytime == false) {
+                    icon = 'night.svg';
+                    if (weather.shortForecast.includes('Cloudy')) {
+                        icon = 'cloudy_night.svg';
+                    }
+                    else if (parseInt(weather.windSpeed, 10) > 10) {
+                        icon = 'windy.svg';
+                    }
+                    else if (weather.probabilityOfPrecipitation.value != null) {
+                        icon = 'rainy.svg';
+                    }
+
+                }
+                else {
+                    icon = 'sunny.svg';
+                    if (weather.shortForecast.includes('Cloudy')) {
+                        icon = 'cloudy_day.svg';
+                    }
+                    else if (parseInt(weather.windSpeed, 10) > 10) {
+                        icon = 'windy.svg';
+                    }
+                    else if (weather.probabilityOfPrecipitation.value != null) {
+                        icon = 'rainy.svg';
+                    }
+                }
+                const shortForecast = weather.shortForecast;
+                const temperature = weather.temperature;
+                const temperatureUnit = weather.temperatureUnit;
+                const date = new Date();
+                const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                const formattedDate = date.toLocaleDateString(undefined, options);
+                let probabilityOfPrecipitation = weather.probabilityOfPrecipitation.value || 0;
+
+                // Update the HTML of the widget
+                const widget = document.querySelector('#weather-widget');
+                widget.innerHTML = `
+                    
+                    <h3>
+                        <img id="main-weather-icon" src="${icon}" alt="${shortForecast}">
+                        ${weather.name}: ${formattedDate}
+                        <br>
+                    </h3>
+                    <h4>
+                        ${shortForecast}, ${temperature} ${temperatureUnit}
+                    </h4>
+                    <img src="rainy.svg" alt="Rain">
+                    <p>Chance of Rain: ${probabilityOfPrecipitation}%</p>
+                    <br>
+                    <img src="windy.svg" alt="Wind">
+                    <p>Wind: ${weather.windSpeed} ${weather.windDirection}</p>
+                    <br>
+                    <img src="forecast.svg" alt="Forecast">
+                    <p>Full Forecast: ${weather.detailedForecast}</p>
+                `;
+
+                // You can also use forecastHourlyData and forecastGridData here...
+            })
+            .catch(error => console.error('Error:', error));
+    </script>
+
+</body>
+
+</html>
